@@ -4,7 +4,7 @@ from .forms import NewCommentForm, PostSearchForm
 from django.views.generic import ListView
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
+from django.contrib.postgres.search import TrigramSimilarity, SearchVector, SearchQuery, SearchRank
 
 
 def home(request):
@@ -78,12 +78,16 @@ def post_search(request):
         if form.is_valid():
             q = form.cleaned_data['q']
 
-            vector = SearchVector('title', weight='A') + \
-                SearchVector('content', weight='B')
-            query = SearchQuery(q)
+            #vector = SearchVector('title', weight='A') + \
+            #    SearchVector('content', weight='B')
+            #query = SearchQuery(q)
 
+            #results = Post.objects.annotate(
+            #    rank=SearchRank(vector, query, cover_density=True)).order_by('-rank')
+            
             results = Post.objects.annotate(
-                rank=SearchRank(vector, query, cover_density=True)).order_by('-rank')
+                similarity=TrigramSimilarity('title', q),
+            ).filter(similarity__gt=0.1).order_by('-similarity')
 
     return render(request, 'blog/search.html',
                   {'form': form,
